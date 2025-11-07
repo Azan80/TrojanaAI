@@ -108,7 +108,7 @@ export default function Features() {
         const animate = () => {
             const current = progressRef.current;
             const target = targetRef.current;
-            const next = current + (target - current) * 0.16;
+            const next = current + (target - current) * 0.12;
 
             if (Math.abs(next - target) < 0.0005) {
                 progressRef.current = target;
@@ -140,9 +140,20 @@ export default function Features() {
     }, []);
 
     const SCROLL_SENSITIVITY = 1 / 1600;
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const media = window.matchMedia("(max-width: 768px)");
+        const listener = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+
+        setIsMobile(media.matches);
+        media.addEventListener("change", listener);
+        return () => media.removeEventListener("change", listener);
+    }, []);
 
     const processScrollDelta = useCallback(
         (delta: number, preventDefault?: () => void) => {
+            if (isMobile) return;
             if (delta === 0) return;
 
             const zone = wheelZoneRef.current;
@@ -150,11 +161,16 @@ export default function Features() {
 
             const bounds = zone.getBoundingClientRect();
             const viewportHeight = window.innerHeight;
-            const margin = viewportHeight * 0.12;
+            const center = viewportHeight / 3;
+            const zoneCenter = bounds.top + bounds.height / 2;
+            const CENTER_TOLERANCE = Math.min(80, viewportHeight * 0.06);
             const fullyVisible =
-                bounds.top >= margin && bounds.bottom <= viewportHeight - margin;
+                bounds.top >= viewportHeight * 0.1 &&
+                bounds.bottom <= viewportHeight - viewportHeight * 0.1;
 
-            if (!fullyVisible) {
+            const centered = Math.abs(zoneCenter - center) <= CENTER_TOLERANCE;
+
+            if (!fullyVisible || !centered) {
                 capturingRef.current = false;
                 return;
             }
@@ -176,6 +192,21 @@ export default function Features() {
                 lockPositionRef.current = window.scrollY;
                 progressRef.current = Math.min(Math.max(progressRef.current, 0), 1);
                 targetRef.current = progressRef.current;
+                console.log("Feature wheel engaged", {
+                    index:
+                        ((Math.round(progressRef.current * features.length) % features.length) +
+                            features.length) %
+                        features.length,
+                    progress: progressRef.current,
+                    bounds: {
+                        top: bounds.top,
+                        bottom: bounds.bottom,
+                        height: bounds.height,
+                        viewportHeight: window.innerHeight,
+                        zoneCenter,
+                        viewportCenter: center,
+                    },
+                });
             }
 
             window.scrollTo({ top: lockPositionRef.current, behavior: "auto" });
@@ -192,7 +223,7 @@ export default function Features() {
                 capturingRef.current = false;
             }
         },
-        [startAnimation]
+        [isMobile, startAnimation]
     );
 
     useEffect(() => {
@@ -206,7 +237,7 @@ export default function Features() {
 
     const angleStep = 360 / features.length;
     const rotationAmount = progress * features.length;
-    const radius = 220;
+    const radius = 250;
 
     const activeIndex = ((Math.round(rotationAmount) % features.length) + features.length) % features.length;
 
@@ -215,7 +246,7 @@ export default function Features() {
             ref={sectionRef}
             id="features"
             className="relative overflow-hidden py-32"
-            style={{ minHeight: "200vh" }}
+            style={{ minHeight: isMobile ? undefined : "170vh" }}
         >
             <div className="absolute inset-0 features-surface"></div>
             <div className="absolute inset-0 hero-grid-pattern opacity-30"></div>
@@ -237,84 +268,126 @@ export default function Features() {
                     </div>
                 </ScrollReveal>
 
-                <div className="relative mt-16 h-[200vh]">
-                    <div
-                        ref={wheelZoneRef}
-                        className="sticky flex h-[min(60vh,480px)] items-center justify-center"
-                        style={{ top: "50.5%", transform: "translateY(-50%)" }}
-                    >
-                        <div className="feature-wheel">
-                            <div className="feature-wheel-ring"></div>
-                            <div className="feature-wheel-core">
-                                <span className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600">
-                                    Capabilities
-                                </span>
+                {isMobile ? (
+                    <div className="mt-10 space-y-8">
+                        {features.map((feature, index) => (
+                            <ScrollReveal key={feature.title} direction="up" delay={index * 80}>
+                                <article className="feature-card">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${feature.accent}`}>
+                                            {feature.icon}
+                                        </span>
+                                        <span className="feature-card-badge">
+                                            <PiCirclesFourBold size={14} /> {feature.badge}
+                                        </span>
+                                    </div>
+
+                                    <h3 className="mt-6 text-2xl font-semibold text-gray-900">{feature.title}</h3>
+                                    <p className="mt-3 text-base leading-relaxed text-gray-600">{feature.description}</p>
+
+                                    <div className="mt-6 space-y-3">
+                                        {feature.highlights.map((highlight) => (
+                                            <div key={highlight} className="feature-highlight">
+                                                <span className="feature-highlight-icon">
+                                                    <PiCheckCircleBold size={15} />
+                                                </span>
+                                                <span>{highlight}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-8 flex flex-wrap gap-3">
+                                        {feature.metrics.map((metric) => (
+                                            <div key={metric.label} className="feature-metric">
+                                                <span className="feature-metric-value">{metric.value}</span>
+                                                <span className="feature-metric-label">{metric.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </article>
+                            </ScrollReveal>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="relative mt-10 h-[145vh]">
+                        <div
+                            ref={wheelZoneRef}
+                            className="sticky flex h-[min(46vh,360px)] items-center justify-center"
+                            style={{ top: "48%", transform: "translateY(-50%)" }}
+                        >
+                            <div className="feature-wheel">
+                                <div className="feature-wheel-ring"></div>
+                                <div className="feature-wheel-core">
+                                    <span className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600">
+                                        Capabilities
+                                    </span>
+                                </div>
+                                {features.map((feature, index) => {
+                                    const relativeIndex = index - rotationAmount;
+                                    const angleDeg = relativeIndex * angleStep;
+                                    const angleRad = (Math.PI / 180) * angleDeg;
+                                    const x = Math.sin(angleRad) * radius;
+                                    const y = Math.cos(angleRad) * radius;
+                                    const normalized = Math.min(Math.abs(angleDeg) / 180, 1);
+                                    const scale = 0.7 + (1 - normalized) * 0.3;
+                                    const opacity = 0.25 + (1 - normalized) * 0.75;
+                                    const elevation = Math.round(scale * 100);
+                                    const isActive = index === activeIndex;
+
+                                    const style: CSSProperties = {
+                                        transform: `translate(-50%, -48%) translate(${x}px, ${y}px) scale(${scale})`,
+                                        opacity,
+                                        zIndex: elevation,
+                                        pointerEvents: isActive ? "auto" : "none",
+                                    };
+
+                                    return (
+                                        <article
+                                            key={feature.title}
+                                            className={`feature-card wheel-card ${isActive ? "wheel-card-active" : ""}`}
+                                            style={style}
+                                        >
+                                            <div className="flex items-start justify-between gap-4">
+                                                <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${feature.accent}`}>
+                                                    {feature.icon}
+                                                </span>
+                                                <span className="feature-card-badge">
+                                                    <PiCirclesFourBold size={14} /> {feature.badge}
+                                                </span>
+                                            </div>
+
+                                            <h3 className="mt-6 text-2xl font-semibold text-gray-900">{feature.title}</h3>
+                                            <p className="mt-3 text-base leading-relaxed text-gray-600">{feature.description}</p>
+
+                                            <div className="mt-6 space-y-3">
+                                                {feature.highlights.map((highlight) => (
+                                                    <div key={highlight} className="feature-highlight">
+                                                        <span className="feature-highlight-icon">
+                                                            <PiCheckCircleBold size={15} />
+                                                        </span>
+                                                        <span>{highlight}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="mt-8 flex flex-wrap gap-3">
+                                                {feature.metrics.map((metric) => (
+                                                    <div key={metric.label} className="feature-metric">
+                                                        <span className="feature-metric-value">{metric.value}</span>
+                                                        <span className="feature-metric-label">{metric.label}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </article>
+                                    );
+                                })}
                             </div>
-                            {features.map((feature, index) => {
-                                const relativeIndex = index - rotationAmount;
-                                const angleDeg = relativeIndex * angleStep;
-                                const angleRad = (Math.PI / 180) * angleDeg;
-                                const x = Math.sin(angleRad) * radius;
-                                const y = Math.cos(angleRad) * radius - radius * 0.25;
-                                const normalized = Math.min(Math.abs(angleDeg) / 180, 1);
-                                const scale = 0.7 + (1 - normalized) * 0.3;
-                                const opacity = 0.25 + (1 - normalized) * 0.75;
-                                const elevation = Math.round(scale * 100);
-                                const isActive = index === activeIndex;
-
-                                const style: CSSProperties = {
-                                    transform: `translate(-50%, -48%) translate(${x}px, ${y}px) scale(${scale})`,
-                                    opacity,
-                                    zIndex: elevation,
-                                    pointerEvents: isActive ? "auto" : "none",
-                                };
-
-                                return (
-                                    <article
-                                        key={feature.title}
-                                        className={`feature-card wheel-card ${isActive ? "wheel-card-active" : ""}`}
-                                        style={style}
-                                    >
-                                        <div className="flex items-start justify-between gap-4">
-                                            <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${feature.accent}`}>
-                                                {feature.icon}
-                                            </span>
-                                            <span className="feature-card-badge">
-                                                <PiCirclesFourBold size={14} /> {feature.badge}
-                                            </span>
-                                        </div>
-
-                                        <h3 className="mt-6 text-2xl font-semibold text-gray-900">{feature.title}</h3>
-                                        <p className="mt-3 text-base leading-relaxed text-gray-600">{feature.description}</p>
-
-                                        <div className="mt-6 space-y-3">
-                                            {feature.highlights.map((highlight) => (
-                                                <div key={highlight} className="feature-highlight">
-                                                    <span className="feature-highlight-icon">
-                                                        <PiCheckCircleBold size={15} />
-                                                    </span>
-                                                    <span>{highlight}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="mt-8 flex flex-wrap gap-3">
-                                            {feature.metrics.map((metric) => (
-                                                <div key={metric.label} className="feature-metric">
-                                                    <span className="feature-metric-value">{metric.value}</span>
-                                                    <span className="feature-metric-label">{metric.label}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </article>
-                                );
-                            })}
                         </div>
                     </div>
-                </div>
+                )}
 
                 <ScrollReveal direction="up" delay={480}>
-                    <div className="mt-20 flex flex-col items-center justify-between gap-6 rounded-3xl border border-white/70 bg-white/80 p-8 text-center shadow-xl backdrop-blur sm:flex-row sm:text-left">
+                    <div className="mt-10 flex flex-col items-center justify-between gap-6 rounded-3xl border border-white/70 bg-white/80 p-8 text-center shadow-xl backdrop-blur sm:flex-row sm:text-left">
                         <div className="flex items-center gap-4 text-gray-800">
                             <div className="rounded-2xl bg-blue-100 p-3 text-blue-600">
                                 <PiHandsClappingBold size={26} />
