@@ -74,7 +74,7 @@ export default function Benefits() {
 
                         <ScrollReveal direction="up" delay={180}>
                             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-slate-600">
-                                YourSaaS weaves automation, governance, and collaboration into a single operating layer. High-velocity
+                                TrojanDev weaves automation, governance, and collaboration into a single operating layer. High-velocity
                                 teams stay aligned, audits stay effortless, and customers feel the impact immediately.
                             </p>
                         </ScrollReveal>
