@@ -5,7 +5,7 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                     {/* Brand */}
                     <div className="col-span-1 md:col-span-2">
-                        <h3 className="text-2xl font-bold text-white mb-4">YourSaaS</h3>
+                        <h3 className="text-2xl font-bold text-white mb-4">TrojanDev</h3>
                         <p className="text-gray-400 mb-6 max-w-md text-sm leading-relaxed">
                             Transform your business workflow with our powerful automation platform. Built for teams that demand excellence.
                         </p>
